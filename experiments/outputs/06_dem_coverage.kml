@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>FloodCastBench DEM - Australia</name>
+    <description>DEM coverage area for flood forecasting simulation</description>
+    
+    <Style id="demBoundary">
+      <LineStyle>
+        <color>ff0000ff</color>
+        <width>4</width>
+      </LineStyle>
+      <PolyStyle>
+        <color>4d0000ff</color>
+      </PolyStyle>
+    </Style>
+    
+    <Placemark>
+      <name>DEM Coverage Area</name>
+      <description><![CDATA[
+        <b>DEM Information:</b><br/>
+        Grid Size: 1073 × 1073 pixels<br/>
+        Elevation Range: -3.7 - 216.3 meters<br/>
+        Mean Elevation: 22.0 meters<br/>
+        <br/>
+        <b>Coordinates:</b><br/>
+        North: -28.850054°<br/>
+        South: -29.139747°<br/>
+        East: 153.510204°<br/>
+        West: 153.178769°<br/>
+      ]]></description>
+      <styleUrl>#demBoundary</styleUrl>
+      <Polygon>
+        <extrude>1</extrude>
+        <altitudeMode>clampToGround</altitudeMode>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>
+              153.17876918901143,-28.850053504937176,0
+              153.5102039775542,-28.850053504937176,0
+              153.5102039775542,-29.1397469783564,0
+              153.17876918901143,-29.1397469783564,0
+              153.17876918901143,-28.850053504937176,0
+            </coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+    
+    <Placemark>
+      <name>DEM Center Point</name>
+      <description>Center of the DEM coverage area</description>
+      <Point>
+        <coordinates>153.34448658328282,-28.99490024164679,0</coordinates>
+      </Point>
+    </Placemark>
+  </Document>
+</kml>
