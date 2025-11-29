@@ -1,0 +1,29 @@
+{
+  "request_id": "sim_hcm_001",
+  "timestamp": "2025-11-29T10:00:00Z",
+  "location": "Ho Chi Minh City",
+  "simulation_type": "static_inundation",
+  "water_level_param": 1.5,
+  "bounds": {
+    "north": 11.159871119602483,
+    "south": 10.375438568758025,
+    "east": 107.02445924184507,
+    "west": 106.35742462311387,
+    "center": {
+      "lat": 10.767654844180253,
+      "lon": 106.69094193247946
+    }
+  },
+  "grid": {
+    "width": 2390,
+    "height": 2811,
+    "resolution_meters": 30.7250757233
+  },
+  "data_stats": {
+    "max_depth_meters": 47.5,
+    "flooded_area_pixels": 386716,
+    "flooded_percentage": 5.7561671199069995,
+    "unit": "meters"
+  },
+  "format": "npy_float32"
+}

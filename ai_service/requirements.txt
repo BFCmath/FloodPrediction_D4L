@@ -1,0 +1,8 @@
+torch
+numpy
+rasterio
+flask
+python-dotenv
+requests
+matplotlib
+
