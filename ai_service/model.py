@@ -74,3 +74,4 @@ class FloodForecastModel(nn.Module):
         outputs = torch.stack(outputs, dim=1)
         return outputs
 
+

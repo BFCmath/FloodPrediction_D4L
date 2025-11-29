@@ -14,7 +14,7 @@ The output will be a map of the flood depth in the next 5 minutes, 30 minutes an
 
 # Input data for render service
 + metadata.json
-+ flood_depths.npy (or image and send through base 64| or consider a way to send the data in a more efficient way) 
++ flood_depths.tif
 
 # More information
 [metadata](exp/metadata.md)
@@ -40,7 +40,7 @@ Use this if found no predicted stream of flood depth
 + Database service - store data about the rainfall and the flood depth prediction
 
 # API endpoint for AI service
-+ return the calculated and stored (latest) flood depth prediction in the next 5 minutes, 30 minutes and 2 hours. (get with parameter "time_horizon" with value "5", "30", "240")
++ return the calculated and stored (latest) flood depth prediction in the next 5 minutes, 30 minutes and 2 hours. (get with parameter "time_horizon" with value "5", "30", "120")
 
 # Folder to work with
 D:\project\d4l\ai_service
