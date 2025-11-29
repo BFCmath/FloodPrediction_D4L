@@ -2,7 +2,8 @@
 Mock Render Service
 ===================
 This script simulates the "Frontend" or "Map Service".
-It takes the standardized API response (metadata + npy) and renders the final Google Map.
+It takes the standardized API response (metadata.json + flood_depths.tif) and renders
+the flood prediction as an overlay on an interactive map.
 
 Usage:
     python render_service.py
@@ -18,13 +19,27 @@ import base64
 import io
 from PIL import Image
 
+# Try to import rasterio for GeoTIFF reading
+try:
+    import rasterio
+    RASTERIO_AVAILABLE = True
+except ImportError:
+    RASTERIO_AVAILABLE = False
+
+# Fallback to tifffile if rasterio not available
+try:
+    import tifffile
+    TIFFFILE_AVAILABLE = True
+except ImportError:
+    TIFFFILE_AVAILABLE = False
+
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
 
-INPUT_DIR = Path(".") # Looking in current directory
+INPUT_DIR = Path(__file__).parent  # Directory where this script is located
 METADATA_FILE = INPUT_DIR / "metadata.json"
-DATA_FILE = INPUT_DIR / "flood_depths.npy"
+DATA_FILE = INPUT_DIR / "flood_depths.tif"  # GeoTIFF format
 OUTPUT_HTML = INPUT_DIR / "final_map_view.html"
 
 # ============================================================================
@@ -36,15 +51,28 @@ def load_package():
     print(f"1. Loading API Package...")
     
     if not METADATA_FILE.exists() or not DATA_FILE.exists():
-        raise FileNotFoundError("Missing API package files (metadata.json or flood_depths.npy)")
+        raise FileNotFoundError("Missing API package files (metadata.json or flood_depths.tif)")
 
     # Load Metadata
     with open(METADATA_FILE, 'r') as f:
         metadata = json.load(f)
     print(f"   - Metadata loaded (Bounds: {metadata['bounds']['north']:.4f}, {metadata['bounds']['east']:.4f})")
     
-    # Load Binary Data
-    flood_data = np.load(DATA_FILE)
+    # Load GeoTIFF Data
+    if RASTERIO_AVAILABLE:
+        with rasterio.open(DATA_FILE) as src:
+            flood_data = src.read(1)  # Read first band
+            nodata = src.nodata
+            if nodata is not None:
+                flood_data = np.where(flood_data == nodata, 0, flood_data)
+    elif TIFFFILE_AVAILABLE:
+        flood_data = tifffile.imread(DATA_FILE)
+        # Handle nodata from metadata
+        nodata = metadata.get('data_stats', {}).get('nodata_value', -9999.0)
+        flood_data = np.where(flood_data == nodata, 0, flood_data)
+    else:
+        raise ImportError("Either rasterio or tifffile is required to read GeoTIFF files")
+    
     print(f"   - Data loaded (Shape: {flood_data.shape})")
     
     return metadata, flood_data
@@ -204,4 +232,3 @@ if __name__ == "__main__":
         
     except Exception as e:
         print(f"\nERROR: {e}")
-

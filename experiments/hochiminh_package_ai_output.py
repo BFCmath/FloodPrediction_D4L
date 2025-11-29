@@ -28,6 +28,15 @@ except ImportError:
     print("Error: pyproj is required. pip install pyproj")
     exit(1)
 
+# Try to import rasterio for GeoTIFF writing (better than tifffile for this)
+try:
+    import rasterio
+    from rasterio.transform import from_origin
+    RASTERIO_AVAILABLE = True
+except ImportError:
+    print("Warning: rasterio not installed. Using tifffile fallback (less metadata).")
+    RASTERIO_AVAILABLE = False
+
 # ============================================================================
 # 1. CONFIGURATION
 # ============================================================================
@@ -38,15 +47,18 @@ DATA_DIR = CURRENT_DIR / "hochiminh"
 DEM_PATH = DATA_DIR / "HoChiMinh_DEM.tif"
 TFW_PATH = DATA_DIR / "HoChiMinh_DEM.tfw"
 
-# The output package folder
-OUTPUT_PACKAGE_DIR = Path("mock_api_response_hochiminh")
+# The output package folder (relative to script location)
+OUTPUT_PACKAGE_DIR = CURRENT_DIR.parent / "mock_api_response_hochiminh"
 
 # Coordinate System of the source data (UTM Zone 48N for HCMC)
 SOURCE_EPSG = 32648
 
 # Flood Generation Parameters
-# Simulating a flood event where water rises to 2.5 meters above reference 0
+# Simulating a flood event where water rises to 1.5 meters above reference 0
 WATER_LEVEL_METERS = 1.5
+
+# Value to use for NoData (pixels outside the DEM)
+NODATA_VALUE = -9999.0
 
 # ============================================================================
 # 2. HELPER FUNCTIONS
@@ -135,31 +147,36 @@ def main():
     print(f"3. Generating Synthetic Flood Map...")
     print(f"   Simulating water level at: {WATER_LEVEL_METERS} meters")
     
-    # Create flood array (same shape as DEM)
+    # Create flood array (same shape as DEM, explicitly float32)
     # Formula: Depth = Water_Level - Ground_Elevation
     # Only where Water_Level > Ground_Elevation
-    flood_depths = np.maximum(0, WATER_LEVEL_METERS - dem)
-    
-    # Ensure non-flooded areas are exactly 0
-    # (The maximum function handles this, but just to be explicit for floats)
-    flood_depths[flood_depths < 0] = 0
+    flood_depths = np.maximum(0, WATER_LEVEL_METERS - dem).astype(np.float32)
     
     # Mask out areas that might be NoData in DEM
     # We identified that the padding/background value is exactly 0.
-    # We only mask out 0. Valid negative values (bathymetry) should be kept.
+    # We mark these as NODATA_VALUE so they are completely ignored (transparent).
     invalid_mask = dem == 0
-    flood_depths[invalid_mask] = 0
+    flood_depths[invalid_mask] = NODATA_VALUE
 
-    # Calculate stats
-    max_depth = float(np.max(flood_depths))
-    flooded_pixels = int(np.sum(flood_depths > 0.05)) # Count pixels with >5cm water
-    total_pixels = flood_depths.size
-    flooded_percent = (flooded_pixels / total_pixels) * 100
+    # Calculate stats (excluding NoData)
+    valid_flood_pixels = flood_depths[flood_depths != NODATA_VALUE]
+    
+    if valid_flood_pixels.size > 0:
+        max_depth = float(np.max(valid_flood_pixels))
+        flooded_pixels = int(np.sum(valid_flood_pixels > 0.05)) # Count pixels with >5cm water
+        total_valid_pixels = valid_flood_pixels.size
+        flooded_percent = (flooded_pixels / total_valid_pixels) * 100
+        mean_depth = float(np.mean(valid_flood_pixels[valid_flood_pixels > 0.05])) if flooded_pixels > 0 else 0.0
+    else:
+        max_depth = 0.0
+        flooded_pixels = 0
+        flooded_percent = 0.0
+        mean_depth = 0.0
 
     print(f"   [OK] Flood Generated:")
     print(f"        Max Depth: {max_depth:.2f}m")
     print(f"        Flooded Area: {flooded_pixels:,} pixels ({flooded_percent:.2f}%)")
-    print(f"        Mean Depth (flooded): {np.mean(flood_depths[flood_depths>0.05]):.2f}m")
+    print(f"        Mean Depth (flooded): {mean_depth:.2f}m")
 
     # --- Step 4: Package for Service ---
     print(f"4. Creating Service Payload in '{OUTPUT_PACKAGE_DIR}'...")
@@ -186,29 +203,61 @@ def main():
             "max_depth_meters": max_depth,
             "flooded_area_pixels": flooded_pixels,
             "flooded_percentage": flooded_percent,
-            "unit": "meters"
+            "unit": "meters",
+            "nodata_value": NODATA_VALUE
         },
-        "format": "npy_float32"
+        "format": "geotiff"
     }
     
     with open(OUTPUT_PACKAGE_DIR / "metadata.json", "w") as f:
         json.dump(metadata, f, indent=2)
     
-    # B. Save Raw Data (Numpy Binary)
-    np.save(OUTPUT_PACKAGE_DIR / "flood_depths.npy", flood_depths.astype(np.float32))
+    # B. Save as GeoTIFF
+    # Using rasterio if available for proper georeferencing, else tifffile
+    output_tif_path = OUTPUT_PACKAGE_DIR / "flood_depths.tif"
     
-    # Optional: Save as GeoTIFF for manual inspection if needed (using tifffile)
-    # tifffile.imwrite(OUTPUT_PACKAGE_DIR / "debug_flood.tif", flood_depths.astype(np.float32))
-
+    if RASTERIO_AVAILABLE:
+        # Create transform from .tfw info
+        # TFW parameters: [pixel_width, rotation_y, rotation_x, pixel_height, x_origin, y_origin]
+        # Affine(a, b, c, d, e, f) -> x' = ax + by + c, y' = dx + ey + f
+        # Mapping: a=width, b=rot_x, c=x_org, d=rot_y, e=height, f=y_org
+        transform = rasterio.Affine(
+            tfw_info['pixel_width'], 
+            tfw_info['rotation_x'], 
+            tfw_info['x_origin'], 
+            tfw_info['rotation_y'], 
+            tfw_info['pixel_height'], 
+            tfw_info['y_origin']
+        )
+        
+        with rasterio.open(
+            output_tif_path,
+            'w',
+            driver='GTiff',
+            height=height,
+            width=width,
+            count=1,
+            dtype=flood_depths.dtype,
+            crs=CRS.from_epsg(SOURCE_EPSG),
+            transform=transform,
+            nodata=NODATA_VALUE,
+            compress='lzw'
+        ) as dst:
+            dst.write(flood_depths, 1)
+            
+    else:
+        # Fallback to simple tifffile (no CRS metadata embedded, but readable)
+        tifffile.imwrite(output_tif_path, flood_depths)
+        print("Warning: Saved without embedded CRS (rasterio missing). Use sidecar metadata.")
+    
     print("\n" + "="*60)
     print("[OK] PACKAGE CREATED SUCCESSFULLY")
     print("="*60)
     print(f"Location: {OUTPUT_PACKAGE_DIR.absolute()}")
     print("\nContents:")
     print("1. metadata.json    -> Contains bounds, stats, and simulation params")
-    print("2. flood_depths.npy -> Raw 2D array of simulated water depths")
+    print("2. flood_depths.tif -> GeoTIFF with embedded georeferencing and NoData value")
     print("\nNext Step: You can use this package to test your visualization/rendering service.")
 
 if __name__ == "__main__":
     main()
-
