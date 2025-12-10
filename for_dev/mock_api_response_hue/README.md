@@ -1,10 +1,10 @@
 # Hue City Mock API Response
-Generated: 2025-12-11T00:47:50Z
+Generated: 2025-12-11T00:52:39Z
 
 ## Contents
 
 1. **metadata.json** - Complete API response with bounds, stats, and configuration
-2. **flood_depth_20251211_004750.tif** - Flood depth prediction (GeoTIFF)
+2. **flood_depth_20251211_005239.tif** - Flood depth prediction (GeoTIFF)
 
 ## Quick Info
 
@@ -27,7 +27,7 @@ with open('metadata.json') as f:
     meta = json.load(f)
 
 # Load flood depths
-flood = tifffile.imread('flood_depth_20251211_004750.tif')
+flood = tifffile.imread('flood_depth_20251211_005239.tif')
 
 print(f"Bounds: {meta['bounds']}")
 print(f"Max depth: {flood.max()} meters")

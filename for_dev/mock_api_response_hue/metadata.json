@@ -1,6 +1,6 @@
 {
-  "request_id": "sim_hue_001",
-  "timestamp": "2025-12-11T00:47:50Z",
+  "request_id": "sim_hue_20251211005239",
+  "timestamp": "2025-12-11T00:52:39Z",
   "location": "Hue City",
   "simulation_type": "static_inundation",
   "water_level_param": 2.0,
