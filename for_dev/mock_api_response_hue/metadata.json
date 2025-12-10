@@ -1,0 +1,30 @@
+{
+  "request_id": "sim_hue_001",
+  "timestamp": "2025-12-11T00:47:50Z",
+  "location": "Hue City",
+  "simulation_type": "static_inundation",
+  "water_level_param": 2.0,
+  "bounds": {
+    "north": 16.74602801912226,
+    "south": 15.987548023342475,
+    "east": 108.19093975546386,
+    "west": 107.01986856019406,
+    "center": {
+      "lat": 16.366788021232367,
+      "lon": 107.60540415782896
+    }
+  },
+  "grid": {
+    "width": 4109,
+    "height": 2681,
+    "resolution_meters": 30.7250757233
+  },
+  "data_stats": {
+    "max_depth_meters": 1.0,
+    "flooded_area_pixels": 45093,
+    "flooded_percentage": 0.8945653562589223,
+    "unit": "meters",
+    "nodata_value": -9999.0
+  },
+  "format": "geotiff"
+}
